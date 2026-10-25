@@ -47,12 +47,14 @@ class DatasetInspector:
         # 1. Inspect UP-Fall and Le2i in raw_dir
         video_exts = {".mp4", ".avi", ".mov", ".mkv"}
         raw_videos = [f for f in self.raw_dir.rglob("*") if f.suffix.lower() in video_exts]
+        raw_csvs = [f for f in self.raw_dir.rglob("*.csv")]
 
         up_fall_videos = [f for f in raw_videos if "up_fall" in str(f).lower() or "activity" in str(f).lower()]
         le2i_videos = [f for f in raw_videos if "le2i" in str(f).lower() or "home" in str(f).lower() or "office" in str(f).lower()]
 
         summary["benchmark_datasets"] = {
             "total_raw_videos": len(raw_videos),
+            "total_raw_csvs": len(raw_csvs),
             "up_fall_candidate_videos": len(up_fall_videos),
             "le2i_candidate_videos": len(le2i_videos),
         }
@@ -236,6 +238,7 @@ if __name__ == "__main__":
             print("-" * 70)
             print("Data Inventory:")
             print(f"  * Raw Benchmark Videos Found:   {report['benchmark_datasets']['total_raw_videos']} clips")
+            print(f"  * Raw Benchmark CSVs Found:     {report['benchmark_datasets']['total_raw_csvs']} files")
             print(f"  * Processed Keypoint Datasets:  {report['processed_datasets']['total_processed_sets']} sets")
             synth = report["synthetic_datasets"]
             if synth.get("available", False):
