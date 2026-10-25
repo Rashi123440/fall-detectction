@@ -210,7 +210,43 @@ class DatasetProcessor:
 
 
 if __name__ == "__main__":
-    inspector = DatasetInspector()
-    report = inspector.inspect_all()
-    print("\n--- Dataset Inspection Report ---")
-    print(json.dumps(report, indent=2))
+    parser = argparse.ArgumentParser(description="Privacy-Preserving Fall Detection: Dataset Inspection & Health Check")
+    parser.add_argument("--json", action="store_true", help="Print output in raw JSON format")
+    parser.add_argument("--extract", type=str, default=None, help="Extract keypoints from a raw dataset folder (e.g., data/raw/up_fall)")
+    parser.add_argument("--name", type=str, default="custom", help="Dataset name identifier for extracted files")
+    args = parser.parse_args()
+
+    if args.extract:
+        processor = DatasetProcessor()
+        processor.extract_from_folder(Path(args.extract), dataset_name=args.name)
+    else:
+        inspector = DatasetInspector()
+        report = inspector.inspect_all()
+
+        if args.json:
+            print(json.dumps(report, indent=2))
+        else:
+            print("=" * 70)
+            print(" [PRIVACY-PRESERVING FALL DETECTION] DATASET INSPECTION REPORT")
+            print("=" * 70)
+            print("Directory Status:")
+            print(f"  * Raw Video Dir       (`data/raw/`):       {'[OK] Present' if report['raw_dir_exists'] else '[X] Missing'}")
+            print(f"  * Processed Data Dir  (`data/processed/`): {'[OK] Present' if report['processed_dir_exists'] else '[X] Missing'}")
+            print(f"  * Synthetic Data Dir  (`data/synthetic/`): {'[OK] Present' if report['synthetic_dir_exists'] else '[X] Missing'}")
+            print("-" * 70)
+            print("Data Inventory:")
+            print(f"  * Raw Benchmark Videos Found:   {report['benchmark_datasets']['total_raw_videos']} clips")
+            print(f"  * Processed Keypoint Datasets:  {report['processed_datasets']['total_processed_sets']} sets")
+            synth = report["synthetic_datasets"]
+            if synth.get("available", False):
+                print(f"  * Synthetic Verification Data:  {synth['samples']} samples (Seq: {synth['sequence_length']}, Dim: {synth['feature_dim']})")
+            else:
+                print("  * Synthetic Verification Data:  None generated")
+            print("-" * 70)
+            print(f"System State:    [{report['status']}]")
+            print(f"Recommendation:  {report['recommendation']}")
+            print("=" * 70)
+            print("Privacy Note: Raw videos in 'data/raw/' are strictly ignored by git.")
+            print("Frames are processed in RAM; only keypoints are written to disk.")
+            print("=" * 70)
+
