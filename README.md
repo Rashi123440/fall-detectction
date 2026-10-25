@@ -146,7 +146,9 @@ Tests include:
 - `test_pose_extractor.py`: Blank frame robustness and skeleton canvas generation.
 - `test_synthetic_data.py`: Keypoint trajectory shapes and label distributions.
 - `test_preprocessor.py`: Sliding windows, imputation of lost landmarks, and scaling.
+- `test_prepare_up_fall.py`: UP-Fall schema parsing, normalization, and window generation.
 - `test_pipeline_e2e.py`: End-to-end synthetic dataset generation, training, and evaluation.
+- `test_camera_and_model_errors.py`: Camera failures (invalid index, empty frames), missing model loading error handling, and configurable alert confirmation rules.
 
 ---
 
