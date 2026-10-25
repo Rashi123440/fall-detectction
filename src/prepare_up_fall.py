@@ -160,17 +160,35 @@ class UPFallDataPreparer:
 
         all_windows: List[np.ndarray] = []
         all_labels: List[int] = []
+        all_subjects: List[str] = []
 
         total_files_processed = 0
         total_raw_frames = 0
 
         for idx, fpath in enumerate(files):
             df = pd.read_csv(fpath)
+            subject_name = fpath.parent.name
 
             coords_data = df.iloc[:, :99].values.astype(np.float32)
             frame_labels = df.iloc[:, 99].values.astype(np.int32)
             num_frames = len(coords_data)
             total_raw_frames += num_frames
+
+            # Handle missing landmarks (NaNs, Infs, or all-zero frames)
+            if np.isnan(coords_data).any() or np.isinf(coords_data).any():
+                coords_df = pd.DataFrame(coords_data)
+                coords_df = coords_df.ffill().bfill().fillna(0.0)
+                coords_data = coords_df.values.astype(np.float32)
+
+            # Impute intermittent all-zero missing frames
+            is_zero_frame = np.all(coords_data == 0.0, axis=1)
+            if np.any(is_zero_frame):
+                last_valid = None
+                for i in range(num_frames):
+                    if not is_zero_frame[i]:
+                        last_valid = coords_data[i]
+                    elif last_valid is not None:
+                        coords_data[i] = last_valid
 
             # Extract normalized feature vector for each frame
             normalized_frames = np.zeros((num_frames, TOTAL_FEATURE_DIM), dtype=np.float32)
@@ -188,19 +206,23 @@ class UPFallDataPreparer:
 
                 all_windows.append(window)
                 all_labels.append(win_label)
+                all_subjects.append(subject_name)
 
             total_files_processed += 1
 
         X_array = np.array(all_windows, dtype=np.float32)
         y_array = np.array(all_labels, dtype=np.int32)
+        subjects_array = np.array(all_subjects, dtype="<U16")
 
         # Output paths
         x_path = self.output_dir / "up_fall_X.npy"
         y_path = self.output_dir / "up_fall_y.npy"
+        subjects_path = self.output_dir / "up_fall_subjects.npy"
         meta_path = self.output_dir / "up_fall_metadata.json"
 
         np.save(x_path, X_array)
         np.save(y_path, y_array)
+        np.save(subjects_path, subjects_array)
 
         num_falls = int(np.sum(y_array == LABEL_FALL))
         num_no_falls = int(np.sum(y_array == LABEL_NO_FALL))
@@ -215,16 +237,20 @@ class UPFallDataPreparer:
             "no_fall_windows": num_no_falls,
             "sequence_length": self.sequence_length,
             "feature_dim": TOTAL_FEATURE_DIM,
+            "subjects_breakdown": {
+                s: int(np.sum(subjects_array == s)) for s in sorted(list(set(all_subjects)))
+            },
             "output_files": {
                 "X": str(x_path),
                 "y": str(y_path),
+                "subjects": str(subjects_path),
             },
         }
 
         with open(meta_path, "w") as f:
             json.dump(metadata, f, indent=2)
 
-        return x_path, y_path, meta_path
+        return x_path, y_path, subjects_path, meta_path
 
 
 def main():
@@ -252,7 +278,7 @@ def main():
         return
 
     print("\nStarting reproducible keypoint normalization and sliding window generation...")
-    x_p, y_p, meta_p = preparer.process_and_save()
+    x_p, y_p, subj_p, meta_p = preparer.process_and_save()
 
     with open(meta_p) as f:
         meta = json.load(f)

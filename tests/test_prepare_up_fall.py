@@ -50,9 +50,10 @@ def test_up_fall_data_preparer_on_mock_csv():
         assert report["frame_label_distribution"][1] == 70
 
         # Process and save
-        x_path, y_path, meta_path = preparer.process_and_save()
+        x_path, y_path, subj_path, meta_path = preparer.process_and_save()
         assert x_path.exists()
         assert y_path.exists()
+        assert subj_path.exists()
         assert meta_path.exists()
 
         X = np.load(x_path)
