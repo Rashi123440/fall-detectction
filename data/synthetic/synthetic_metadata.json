@@ -1,0 +1,9 @@
+{
+  "is_synthetic": true,
+  "disclaimer": "Generated for pipeline testing and verification. Do not report as real-world clinical performance.",
+  "num_samples": 400,
+  "num_falls": 200,
+  "num_adls": 200,
+  "sequence_length": 30,
+  "feature_dim": 135
+}

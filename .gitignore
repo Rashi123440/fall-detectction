@@ -1,0 +1,30 @@
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Virtual Environments
+venv/
+env/
+.env
+
+# Raw Video Privacy Guard: NEVER track raw video recordings
+data/raw/*.mp4
+data/raw/*.avi
+data/raw/*.mov
+data/raw/*.mkv
+data/raw/*.webm
+data/raw/**/*.mp4
+data/raw/**/*.avi
+
+# Trained models & large binary artifacts
+models/*.keras
+models/*.h5
+models/*.pkl
+
+# OS & IDE metadata
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
