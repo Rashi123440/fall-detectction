@@ -132,6 +132,14 @@ with st.sidebar:
         step=0.05,
         help="Model probability decision boundary.",
     )
+    confirm_frames = st.slider(
+        "Alert Confirmation Rule",
+        min_value=1,
+        max_value=10,
+        value=3,
+        step=1,
+        help="Consecutive positive windows required before confirming an alert (prevents noise spikes).",
+    )
 
     st.markdown("---")
     st.markdown("### 📋 System Health")
@@ -139,7 +147,7 @@ with st.sidebar:
     report = inspector.inspect_all()
     st.write(f"**Data Status:** `{report['status']}`")
     model_exists = DEFAULT_MODEL_PATH.exists()
-    st.write(f"**Model Ready:** {'✅ Yes' if model_exists else '❌ No (Train First)'}")
+    st.write(f"**Model Ready:** {'✅ Yes (Trained UP-Fall LSTM)' if model_exists else '❌ No (Train First)'}")
 
 
 # Top Header
@@ -185,13 +193,17 @@ with tab_live:
         if start_btn:
             st.session_state.webcam_active = True
             if st.session_state.detector is None:
-                st.session_state.detector = RealTimeFallDetector(threshold=conf_threshold)
+                st.session_state.detector = RealTimeFallDetector(
+                    threshold=conf_threshold,
+                    alert_confirmation_frames=confirm_frames,
+                )
 
         if stop_btn:
             st.session_state.webcam_active = False
             if st.session_state.detector:
                 st.session_state.detector.close()
                 st.session_state.detector = None
+            st.rerun()
 
         frame_slot = st.empty()
         banner_slot = st.empty()
@@ -203,20 +215,20 @@ with tab_live:
             # Active camera streaming loop
             cap = cv2.VideoCapture(0)
             if not cap.isOpened():
-                frame_slot.error("Could not access webcam. Please verify camera permissions in Windows settings.")
+                frame_slot.error("Could not access webcam. Please verify camera hardware connection and permissions.")
                 st.session_state.webcam_active = False
             else:
                 try:
-                    # Update detector threshold from slider
+                    # Update dynamic parameters from sliders
                     if st.session_state.detector:
                         st.session_state.detector.threshold = conf_threshold
+                        st.session_state.detector.alert_confirmation_frames = confirm_frames
 
-                    stop_requested = False
                     # Loop for single-frame streaming in Streamlit
                     while st.session_state.webcam_active:
                         ret, frame = cap.read()
                         if not ret:
-                            frame_slot.warning("Failed to grab camera frame.")
+                            frame_slot.warning("Camera stream interrupted or frame read failed.")
                             break
 
                         display_frame, telemetry = st.session_state.detector.process_frame(
@@ -224,23 +236,25 @@ with tab_live:
                             skeleton_only_mode=privacy_mode,
                         )
 
-                        # Check sound
-                        if telemetry["is_fall"] and enable_audio:
-                            alert_manager.trigger_alert()
-
-                        # Update UI banner
-                        if telemetry["is_fall"]:
+                        # Update UI banner based on configurable confirmation rule
+                        if telemetry.get("is_confirmed", False):
                             banner_slot.markdown(
-                                f'<div class="alert-banner">🚨 EMERGENCY WARNING: FALL DETECTED ({telemetry["fall_probability"]*100:.1f}%)</div>',
+                                f'<div class="alert-banner">🚨 EMERGENCY ALERT: FALL CONFIRMED ({telemetry["fall_probability"]*100:.1f}%)</div>',
+                                unsafe_allow_html=True,
+                            )
+                        elif telemetry.get("consecutive_fall_count", 0) > 0:
+                            banner_slot.markdown(
+                                f'<div style="padding:12px; border-radius:8px; background-color:#78350F; color:#FEF3C7; font-weight:bold; text-align:center; margin-bottom:16px;">'
+                                f'⚠️ POTENTIAL FALL DETECTED: Confirming ({telemetry["consecutive_fall_count"]}/{confirm_frames}) ({telemetry["fall_probability"]*100:.1f}%)</div>',
                                 unsafe_allow_html=True,
                             )
                         else:
                             banner_slot.markdown(
-                                f'<div class="safe-banner">✔ Normal Activity ({telemetry["fall_probability"]*100:.1f}%) | Buffer: {telemetry["buffer_fill"]}/30</div>',
+                                f'<div class="safe-banner">✔ Normal Movement / No Fall ({telemetry["fall_probability"]*100:.1f}%) | Buffer: {telemetry["buffer_fill"]}/30</div>',
                                 unsafe_allow_html=True,
                             )
 
-                        # Display RGB frame in Streamlit
+                        # Display RGB frame strictly in Streamlit RAM
                         display_rgb = cv2.cvtColor(display_frame, cv2.COLOR_BGR2RGB)
                         frame_slot.image(display_rgb, channels="RGB", use_container_width=True)
 
