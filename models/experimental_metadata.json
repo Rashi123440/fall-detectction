@@ -1,0 +1,238 @@
+{
+  "model_type": "Experimental Stacked LSTM with Balanced Crossentropy",
+  "epochs_trained": 17,
+  "loss": "binary_crossentropy",
+  "tuned_threshold": 0.5,
+  "held_out_test_subject": "SUBJECT3",
+  "test_metrics": {
+    "model_type": "Experimental Stacked LSTM with Focal Loss",
+    "tuned_threshold": 0.5,
+    "test_samples": 285,
+    "accuracy": 0.6877192982456141,
+    "precision": 0.7805907172995781,
+    "fall_recall": 0.8333333333333334,
+    "no_fall_recall": 0.1746031746031746,
+    "false_positive_rate": 0.8253968253968254,
+    "f1_score": 0.8061002178649237,
+    "roc_auc": 0.5297440297440298,
+    "confusion_matrix": {
+      "true_negatives": 11,
+      "false_positives": 52,
+      "false_negatives": 37,
+      "true_positives": 185,
+      "matrix": [
+        [
+          11,
+          52
+        ],
+        [
+          37,
+          185
+        ]
+      ]
+    },
+    "classification_report": "               precision    recall  f1-score   support\n\nNo Fall (ADL)     0.2292    0.1746    0.1982        63\n         Fall     0.7806    0.8333    0.8061       222\n\n     accuracy                         0.6877       285\n    macro avg     0.5049    0.5040    0.5021       285\n weighted avg     0.6587    0.6877    0.6717       285\n",
+    "validation_tuning": {
+      "selected_threshold": 0.5,
+      "val_balanced_acc": 0.4856,
+      "tuning_curve": [
+        {
+          "threshold": 0.3,
+          "fall_recall": 0.9963,
+          "no_fall_recall": 0.0,
+          "balanced_acc": 0.4981,
+          "f1_score": 0.9194
+        },
+        {
+          "threshold": 0.32,
+          "fall_recall": 0.9814,
+          "no_fall_recall": 0.0652,
+          "balanced_acc": 0.5233,
+          "f1_score": 0.9167
+        },
+        {
+          "threshold": 0.34,
+          "fall_recall": 0.9628,
+          "no_fall_recall": 0.0652,
+          "balanced_acc": 0.514,
+          "f1_score": 0.9072
+        },
+        {
+          "threshold": 0.36,
+          "fall_recall": 0.9591,
+          "no_fall_recall": 0.0652,
+          "balanced_acc": 0.5122,
+          "f1_score": 0.9053
+        },
+        {
+          "threshold": 0.38,
+          "fall_recall": 0.9554,
+          "no_fall_recall": 0.0652,
+          "balanced_acc": 0.5103,
+          "f1_score": 0.9033
+        },
+        {
+          "threshold": 0.4,
+          "fall_recall": 0.9442,
+          "no_fall_recall": 0.0652,
+          "balanced_acc": 0.5047,
+          "f1_score": 0.8975
+        },
+        {
+          "threshold": 0.42,
+          "fall_recall": 0.9442,
+          "no_fall_recall": 0.0652,
+          "balanced_acc": 0.5047,
+          "f1_score": 0.8975
+        },
+        {
+          "threshold": 0.44,
+          "fall_recall": 0.9405,
+          "no_fall_recall": 0.087,
+          "balanced_acc": 0.5137,
+          "f1_score": 0.8972
+        },
+        {
+          "threshold": 0.46,
+          "fall_recall": 0.9331,
+          "no_fall_recall": 0.087,
+          "balanced_acc": 0.51,
+          "f1_score": 0.8932
+        },
+        {
+          "threshold": 0.48,
+          "fall_recall": 0.9108,
+          "no_fall_recall": 0.087,
+          "balanced_acc": 0.4989,
+          "f1_score": 0.8813
+        },
+        {
+          "threshold": 0.5,
+          "fall_recall": 0.8625,
+          "no_fall_recall": 0.1087,
+          "balanced_acc": 0.4856,
+          "f1_score": 0.8561
+        },
+        {
+          "threshold": 0.52,
+          "fall_recall": 0.8253,
+          "no_fall_recall": 0.1304,
+          "balanced_acc": 0.4779,
+          "f1_score": 0.8362
+        },
+        {
+          "threshold": 0.54,
+          "fall_recall": 0.7658,
+          "no_fall_recall": 0.1304,
+          "balanced_acc": 0.4481,
+          "f1_score": 0.8
+        },
+        {
+          "threshold": 0.56,
+          "fall_recall": 0.7138,
+          "no_fall_recall": 0.2174,
+          "balanced_acc": 0.4656,
+          "f1_score": 0.7726
+        },
+        {
+          "threshold": 0.58,
+          "fall_recall": 0.6877,
+          "no_fall_recall": 0.2826,
+          "balanced_acc": 0.4852,
+          "f1_score": 0.7598
+        },
+        {
+          "threshold": 0.6,
+          "fall_recall": 0.5985,
+          "no_fall_recall": 0.3261,
+          "balanced_acc": 0.4623,
+          "f1_score": 0.6985
+        },
+        {
+          "threshold": 0.62,
+          "fall_recall": 0.5204,
+          "no_fall_recall": 0.4565,
+          "balanced_acc": 0.4885,
+          "f1_score": 0.6452
+        },
+        {
+          "threshold": 0.64,
+          "fall_recall": 0.4387,
+          "no_fall_recall": 0.5652,
+          "balanced_acc": 0.5019,
+          "f1_score": 0.5799
+        },
+        {
+          "threshold": 0.66,
+          "fall_recall": 0.4015,
+          "no_fall_recall": 0.587,
+          "balanced_acc": 0.4942,
+          "f1_score": 0.5455
+        },
+        {
+          "threshold": 0.68,
+          "fall_recall": 0.3234,
+          "no_fall_recall": 0.6957,
+          "balanced_acc": 0.5095,
+          "f1_score": 0.4703
+        },
+        {
+          "threshold": 0.7,
+          "fall_recall": 0.3086,
+          "no_fall_recall": 0.7174,
+          "balanced_acc": 0.513,
+          "f1_score": 0.4548
+        },
+        {
+          "threshold": 0.72,
+          "fall_recall": 0.2193,
+          "no_fall_recall": 0.7391,
+          "balanced_acc": 0.4792,
+          "f1_score": 0.3471
+        },
+        {
+          "threshold": 0.74,
+          "fall_recall": 0.1933,
+          "no_fall_recall": 0.7391,
+          "balanced_acc": 0.4662,
+          "f1_score": 0.3123
+        },
+        {
+          "threshold": 0.76,
+          "fall_recall": 0.1636,
+          "no_fall_recall": 0.7609,
+          "balanced_acc": 0.4622,
+          "f1_score": 0.2716
+        },
+        {
+          "threshold": 0.78,
+          "fall_recall": 0.1413,
+          "no_fall_recall": 0.7826,
+          "balanced_acc": 0.4619,
+          "f1_score": 0.2397
+        },
+        {
+          "threshold": 0.8,
+          "fall_recall": 0.1115,
+          "no_fall_recall": 0.7826,
+          "balanced_acc": 0.4471,
+          "f1_score": 0.1942
+        },
+        {
+          "threshold": 0.82,
+          "fall_recall": 0.0929,
+          "no_fall_recall": 0.8043,
+          "balanced_acc": 0.4486,
+          "f1_score": 0.165
+        },
+        {
+          "threshold": 0.84,
+          "fall_recall": 0.0706,
+          "no_fall_recall": 0.8696,
+          "balanced_acc": 0.4701,
+          "f1_score": 0.1293
+        }
+      ]
+    }
+  }
+}

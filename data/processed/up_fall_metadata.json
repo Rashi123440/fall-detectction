@@ -1,0 +1,23 @@
+{
+  "dataset_name": "UP-Fall Detection Dataset",
+  "source_directory": "C:\\Users\\1811r\\OneDrive\\Documents\\Desktop\\Privacy-Preserving-Fall-Detection\\data\\raw\\up_fall",
+  "files_processed": 82,
+  "total_raw_frames": 8200,
+  "total_windows_generated": 1230,
+  "fall_windows": 1032,
+  "no_fall_windows": 198,
+  "sequence_length": 30,
+  "feature_dim": 135,
+  "subjects_breakdown": {
+    "SUBJECT1": 300,
+    "SUBJECT2": 330,
+    "SUBJECT3": 285,
+    "SUBJECT4": 75,
+    "SUBJECT5": 240
+  },
+  "output_files": {
+    "X": "C:\\Users\\1811r\\OneDrive\\Documents\\Desktop\\Privacy-Preserving-Fall-Detection\\data\\processed\\up_fall_X.npy",
+    "y": "C:\\Users\\1811r\\OneDrive\\Documents\\Desktop\\Privacy-Preserving-Fall-Detection\\data\\processed\\up_fall_y.npy",
+    "subjects": "C:\\Users\\1811r\\OneDrive\\Documents\\Desktop\\Privacy-Preserving-Fall-Detection\\data\\processed\\up_fall_subjects.npy"
+  }
+}

@@ -1,27 +1,27 @@
 {
   "threshold": 0.5,
   "test_samples": 285,
-  "accuracy": 0.6385964912280702,
-  "precision": 0.759825327510917,
-  "recall": 0.7837837837837838,
-  "specificity": 0.12698412698412698,
-  "f1_score": 0.7716186252771619,
-  "roc_auc": 0.48298298298298303,
+  "accuracy": 0.712280701754386,
+  "precision": 0.7777777777777778,
+  "recall": 0.8828828828828829,
+  "specificity": 0.1111111111111111,
+  "f1_score": 0.8270042194092827,
+  "roc_auc": 0.563921063921064,
   "confusion_matrix": {
-    "true_negatives": 8,
-    "false_positives": 55,
-    "false_negatives": 48,
-    "true_positives": 174,
+    "true_negatives": 7,
+    "false_positives": 56,
+    "false_negatives": 26,
+    "true_positives": 196,
     "matrix": [
       [
-        8,
-        55
+        7,
+        56
       ],
       [
-        48,
-        174
+        26,
+        196
       ]
     ]
   },
-  "classification_report": "               precision    recall  f1-score   support\n\nNo Fall (ADL)       0.14      0.13      0.13        63\n         Fall       0.76      0.78      0.77       222\n\n     accuracy                           0.64       285\n    macro avg       0.45      0.46      0.45       285\n weighted avg       0.62      0.64      0.63       285\n"
+  "classification_report": "               precision    recall  f1-score   support\n\nNo Fall (ADL)       0.21      0.11      0.15        63\n         Fall       0.78      0.88      0.83       222\n\n     accuracy                           0.71       285\n    macro avg       0.49      0.50      0.49       285\n weighted avg       0.65      0.71      0.68       285\n"
 }

@@ -118,3 +118,43 @@ def test_alert_confirmation_rule_logic():
     assert detector.is_fall_confirmed is False
 
     detector.close()
+
+
+def test_run_webcam_demo_validates_model_and_scaler_paths():
+    """Verify run_webcam_demo raises FileNotFoundError when passed nonexistent model or scaler paths."""
+    from src.real_time_detector import run_webcam_demo
+
+    with pytest.raises(FileNotFoundError) as exc_info:
+        run_webcam_demo(model_path=Path("models/nonexistent_model.keras"))
+    assert "Model file not found" in str(exc_info.value)
+
+    with pytest.raises(FileNotFoundError) as exc_info2:
+        run_webcam_demo(scaler_path=Path("models/nonexistent_scaler.pkl"))
+    assert "Scaler file not found" in str(exc_info2.value)
+
+
+def test_real_time_detector_loads_experimental_model_and_scaler():
+    """Verify that RealTimeFallDetector successfully loads the experimental model and scaler."""
+    exp_model = Path("models/experimental_fall_lstm.keras")
+    exp_scaler = Path("models/experimental_scaler.pkl")
+
+    if exp_model.exists() and exp_scaler.exists():
+        detector = RealTimeFallDetector(
+            model_path=exp_model,
+            scaler_path=exp_scaler,
+        )
+        assert detector.model is not None
+        assert detector.has_scaler is True
+        detector.close()
+
+
+def test_run_webcam_demo_autopairs_experimental_scaler():
+    """Verify that specifying experimental model automatically pairs with experimental scaler."""
+    from src.real_time_detector import run_webcam_demo
+    # Pass invalid camera -999 to stop execution before loop but verify model/scaler validation succeeded
+    result = run_webcam_demo(
+        camera_id=-999,
+        model_path=Path("models/experimental_fall_lstm.keras"),
+    )
+    assert result is False  # Safe camera failure after successful model/scaler load
+

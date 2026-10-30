@@ -6,7 +6,7 @@ Trains stacked LSTM with class balancing, saves checkpoints, and computes test d
 import json
 import argparse
 from pathlib import Path
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Optional, List
 import numpy as np
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.model_selection import train_test_split
@@ -60,6 +60,7 @@ class SubjectLeakageFreeTrainer:
 
     def partition_by_subject(
         self,
+        val_subjects: Optional[List[str]] = None,
         val_subject: str = "SUBJECT2",
         random_state: int = 42,
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -67,41 +68,52 @@ class SubjectLeakageFreeTrainer:
 
         Guarantee:
         - Test set contains ONLY self.test_subject (unseen during all training and tuning).
-        - Validation set contains 50% of val_subject.
-        - Training set contains all remaining subjects + other 50% of val_subject.
+        - If dedicated validation subjects are available, validation contains exclusively those subjects.
+        - Training set contains all remaining subjects.
         Zero frame or subject overlap across splits.
         """
-        # 1. Held-Out Test Set: Exclusively test_subject
+        unique_subjects = sorted(list(set(self.subjects)))
         test_mask = (self.subjects == self.test_subject)
         X_test = self.X[test_mask]
         y_test = self.y[test_mask]
 
-        # 2. Candidate pool for Train & Validation: All subjects except test_subject
-        train_pool_mask = ~test_mask
-        X_pool = self.X[train_pool_mask]
-        y_pool = self.y[train_pool_mask]
-        subjs_pool = self.subjects[train_pool_mask]
+        if val_subjects is None:
+            remaining = [s for s in unique_subjects if s != self.test_subject]
+            if len(remaining) >= 3 and "SUBJECT4" in remaining and "SUBJECT5" in remaining:
+                val_subjects = ["SUBJECT4", "SUBJECT5"]
+            elif len(remaining) >= 2:
+                val_subjects = [remaining[-1]]
 
-        # Split val_subject into train and val to keep both in training pool
-        val_sub_mask = (subjs_pool == val_subject)
-        X_val_sub = X_pool[val_sub_mask]
-        y_val_sub = y_pool[val_sub_mask]
+        if val_subjects:
+            val_mask = np.isin(self.subjects, val_subjects)
+            train_mask = (~test_mask) & (~val_mask)
 
-        # Stratified 50/50 split of the validation subject
-        X_val_sub_train, X_val, y_val_sub_train, y_val = train_test_split(
-            X_val_sub, y_val_sub,
-            test_size=0.5,
-            stratify=y_val_sub,
-            random_state=random_state,
-        )
+            X_train, y_train = self.X[train_mask], self.y[train_mask]
+            X_val, y_val = self.X[val_mask], self.y[val_mask]
+        else:
+            # Fallback to single-subject 50/50 split when only 2 or 3 subjects exist
+            train_pool_mask = ~test_mask
+            X_pool = self.X[train_pool_mask]
+            y_pool = self.y[train_pool_mask]
+            subjs_pool = self.subjects[train_pool_mask]
 
-        # Remaining subjects go purely to train (e.g. SUBJECT1)
-        other_sub_mask = (subjs_pool != val_subject)
-        X_other = X_pool[other_sub_mask]
-        y_other = y_pool[other_sub_mask]
+            val_sub_mask = (subjs_pool == val_subject)
+            X_val_sub = X_pool[val_sub_mask]
+            y_val_sub = y_pool[val_sub_mask]
 
-        X_train = np.concatenate([X_other, X_val_sub_train], axis=0)
-        y_train = np.concatenate([y_other, y_val_sub_train], axis=0)
+            X_val_sub_train, X_val, y_val_sub_train, y_val = train_test_split(
+                X_val_sub, y_val_sub,
+                test_size=0.5,
+                stratify=y_val_sub,
+                random_state=random_state,
+            )
+
+            other_sub_mask = (subjs_pool != val_subject)
+            X_other = X_pool[other_sub_mask]
+            y_other = y_pool[other_sub_mask]
+
+            X_train = np.concatenate([X_other, X_val_sub_train], axis=0)
+            y_train = np.concatenate([y_other, y_val_sub_train], axis=0)
 
         # Shuffle training set
         rng = np.random.RandomState(random_state)
