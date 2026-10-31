@@ -1,16 +1,17 @@
 """Streamlit Interactive Dashboard for Privacy-Preserving Fall Detection.
-Features real-time webcam inference, privacy toggles, dataset inspection,
+Features browser-camera inference, privacy toggles, dataset inspection,
 model training controls, and comprehensive evaluation metrics.
 """
 
-import time
 import json
 import sys
+import threading
 from pathlib import Path
+import av
 import numpy as np
 import pandas as pd
 import streamlit as st
-import cv2
+from streamlit_webrtc import webrtc_streamer
 
 # Streamlit may put only the entrypoint directory on sys.path.
 project_root = Path(__file__).resolve().parent.parent
@@ -30,12 +31,11 @@ from src.config import (
     CLASS_NAMES,
 )
 from src.dataset_loader import DatasetInspector
-from src.synthetic_data import SyntheticKinematicsGenerator, create_and_save_synthetic_dataset
+from src.synthetic_data import create_and_save_synthetic_dataset
 from src.preprocessor import KeypointPreprocessor
 from src.lstm_model import train_fall_detector, load_model_for_inference
 from src.evaluate import evaluate_model
 from src.real_time_detector import RealTimeFallDetector
-from src.audio_alert import alert_manager
 
 # Page configuration
 st.set_page_config(
@@ -102,12 +102,18 @@ st.markdown("""
 
 def init_session_state():
     """Initializes persistent application session variables."""
-    if "webcam_active" not in st.session_state:
-        st.session_state.webcam_active = False
     if "detector" not in st.session_state:
         st.session_state.detector = None
-    if "history_log" not in st.session_state:
-        st.session_state.history_log = []
+    if "camera_data" not in st.session_state:
+        st.session_state.camera_data = {
+            "telemetry": None,
+            "history": [],
+            "skeleton_only": True,
+            "threshold": FALL_PROBABILITY_THRESHOLD,
+            "confirmation_frames": 3,
+        }
+    if "camera_data_lock" not in st.session_state:
+        st.session_state.camera_data_lock = threading.Lock()
 
 
 init_session_state()
@@ -123,12 +129,7 @@ with st.sidebar:
     privacy_mode = st.toggle(
         "Skeleton Only (Black Canvas)",
         value=True,
-        help="Discards all RGB video textures in RAM; renders only stick figure keypoints.",
-    )
-    enable_audio = st.toggle(
-        "Enable Local Audio Beep",
-        value=True,
-        help="Sounds local alert on the host machine when fall is detected.",
+        help="Only affects the video returned by the app. In hosted deployments, camera frames are still sent to the cloud server.",
     )
     conf_threshold = st.slider(
         "Fall Threshold",
@@ -159,16 +160,17 @@ with st.sidebar:
 # Top Header
 st.title("🛡️ Privacy-Preserving Fall Detection System")
 st.markdown("""
-Continuous fall monitoring designed for privacy. Body keypoints are extracted strictly **in-memory** using MediaPipe Pose.
-Raw RGB frames are **never stored on disk or transmitted to any external cloud services**.
+Fall-detection research dashboard using MediaPipe Pose. In the hosted version, camera frames are sent to Streamlit Cloud
+for inference; when run locally, they are sent to the local app server. The app processes frames in memory and does not
+intentionally save raw frames.
 """)
 
 # Privacy Badges Header
 st.markdown("""
 <div>
-    <span class="privacy-badge badge-active">✔ In-Memory RAM Processing</span>
-    <span class="privacy-badge badge-active">✔ Zero Raw Video Stored</span>
-    <span class="privacy-badge badge-active">✔ 100% Local Device Inference</span>
+    <span class="privacy-badge badge-warn">⚠ Hosted camera streams sent to cloud</span>
+    <span class="privacy-badge badge-active">✔ In-memory app processing</span>
+    <span class="privacy-badge badge-active">✔ No intentional raw-video file storage</span>
     <span class="privacy-badge badge-warn">⚠ Skeleton Biometrics Notice</span>
 </div>
 """, unsafe_allow_html=True)
@@ -190,116 +192,131 @@ with tab_live:
 
     with col_cam:
         st.subheader("Webcam Monitor")
+        camera_consent = st.checkbox(
+            "I agree to stream my browser camera video to the app server for fall-detection processing.",
+            value=False,
+            key="cloud_camera_consent",
+        )
+        st.warning(
+            "Camera frames leave your browser and are processed by the server running this app "
+            "(the cloud server in a hosted deployment). "
+            "Skeleton-only mode changes the returned display; it does not prevent sending camera frames to the server. "
+            "Use Stop to end the stream. This demo is not a safety-monitoring service."
+        )
 
-        # Camera Permission & Controls
-        c1, c2, c3 = st.columns([1, 1, 2])
-        start_btn = c1.button("▶ Start Camera", use_container_width=True, type="primary")
-        stop_btn = c2.button("⏹ Stop Camera", use_container_width=True)
-
-        if start_btn:
-            st.session_state.webcam_active = True
+        if camera_consent:
             if st.session_state.detector is None:
                 st.session_state.detector = RealTimeFallDetector(
                     threshold=conf_threshold,
                     alert_confirmation_frames=confirm_frames,
                 )
 
-        if stop_btn:
-            st.session_state.webcam_active = False
-            if st.session_state.detector:
+            detector = st.session_state.detector
+            camera_data = st.session_state.camera_data
+            camera_data_lock = st.session_state.camera_data_lock
+            with camera_data_lock:
+                camera_data["skeleton_only"] = privacy_mode
+                camera_data["threshold"] = conf_threshold
+                camera_data["confirmation_frames"] = confirm_frames
+
+            def video_frame_callback(frame):
+                image = frame.to_ndarray(format="bgr24")
+                with camera_data_lock:
+                    detector.threshold = camera_data["threshold"]
+                    detector.alert_confirmation_frames = camera_data["confirmation_frames"]
+                    skeleton_only_mode = camera_data["skeleton_only"]
+
+                display_frame, telemetry = detector.process_frame(
+                    image,
+                    skeleton_only_mode=skeleton_only_mode,
+                )
+
+                with camera_data_lock:
+                    camera_data["telemetry"] = telemetry
+                    camera_data["history"].append({
+                        "Probability": f"{telemetry['fall_probability'] * 100:.1f}%",
+                        "Fall Detected": "Yes" if telemetry["is_fall"] else "No",
+                        "Pose Visible": "Yes" if telemetry["pose_detected"] else "No",
+                    })
+                    del camera_data["history"][:-200]
+
+                return av.VideoFrame.from_ndarray(display_frame, format="bgr24")
+
+            webrtc_streamer(
+                key="fall-detection-browser-camera",
+                video_frame_callback=video_frame_callback,
+                media_stream_constraints={
+                    "video": {
+                        "width": {"ideal": 640},
+                        "height": {"ideal": 480},
+                        "frameRate": {"ideal": 15, "max": 20},
+                    },
+                    "audio": False,
+                },
+                rtc_configuration={
+                    "iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]
+                },
+            )
+            st.caption(
+                "Use the camera component's Start/Stop controls. The detector's audio alert runs on the cloud host "
+                "in a hosted deployment and may not be audible in your browser; fall status is shown in the processed video. "
+                "Uncheck the consent box to close the detector session."
+            )
+        else:
+            if st.session_state.detector is not None:
                 st.session_state.detector.close()
                 st.session_state.detector = None
-            st.rerun()
-
-        frame_slot = st.empty()
-        banner_slot = st.empty()
-
-        if not st.session_state.webcam_active:
-            frame_slot.info("Camera is currently stopped. Click '**Start Camera**' above to begin in-memory keypoint detection.")
-            banner_slot.empty()
-        else:
-            # Active camera streaming loop
-            cap = cv2.VideoCapture(0)
-            if not cap.isOpened():
-                frame_slot.error("Could not access webcam. Please verify camera hardware connection and permissions.")
-                st.session_state.webcam_active = False
-            else:
-                try:
-                    # Update dynamic parameters from sliders
-                    if st.session_state.detector:
-                        st.session_state.detector.threshold = conf_threshold
-                        st.session_state.detector.alert_confirmation_frames = confirm_frames
-
-                    # Loop for single-frame streaming in Streamlit
-                    while st.session_state.webcam_active:
-                        ret, frame = cap.read()
-                        if not ret:
-                            frame_slot.warning("Camera stream interrupted or frame read failed.")
-                            break
-
-                        display_frame, telemetry = st.session_state.detector.process_frame(
-                            frame,
-                            skeleton_only_mode=privacy_mode,
-                        )
-
-                        # Update UI banner based on configurable confirmation rule
-                        if telemetry.get("is_confirmed", False):
-                            banner_slot.markdown(
-                                f'<div class="alert-banner">🚨 EMERGENCY ALERT: FALL CONFIRMED ({telemetry["fall_probability"]*100:.1f}%)</div>',
-                                unsafe_allow_html=True,
-                            )
-                        elif telemetry.get("consecutive_fall_count", 0) > 0:
-                            banner_slot.markdown(
-                                f'<div style="padding:12px; border-radius:8px; background-color:#78350F; color:#FEF3C7; font-weight:bold; text-align:center; margin-bottom:16px;">'
-                                f'⚠️ POTENTIAL FALL DETECTED: Confirming ({telemetry["consecutive_fall_count"]}/{confirm_frames}) ({telemetry["fall_probability"]*100:.1f}%)</div>',
-                                unsafe_allow_html=True,
-                            )
-                        else:
-                            banner_slot.markdown(
-                                f'<div class="safe-banner">✔ Normal Movement / No Fall ({telemetry["fall_probability"]*100:.1f}%) | Buffer: {telemetry["buffer_fill"]}/30</div>',
-                                unsafe_allow_html=True,
-                            )
-
-                        # Display RGB frame strictly in Streamlit RAM
-                        display_rgb = cv2.cvtColor(display_frame, cv2.COLOR_BGR2RGB)
-                        frame_slot.image(display_rgb, channels="RGB", use_container_width=True)
-
-                        # Log event
-                        st.session_state.history_log.append({
-                            "Time": time.strftime("%H:%M:%S"),
-                            "Probability": f"{telemetry['fall_probability']*100:.1f}%",
-                            "Fall Detected": "🚨 YES" if telemetry["is_fall"] else "No",
-                            "Pose Visible": "Yes" if telemetry["pose_detected"] else "No",
-                        })
-                        if len(st.session_state.history_log) > 200:
-                            st.session_state.history_log.pop(0)
-
-                        time.sleep(0.03)  # Approx 30 FPS throttle
-                finally:
-                    cap.release()
+                with st.session_state.camera_data_lock:
+                    st.session_state.camera_data["telemetry"] = None
+                    st.session_state.camera_data["history"].clear()
+            st.info("Camera is off. Accept the cloud-streaming notice above before starting.")
 
     with col_telemetry:
         st.subheader("In-Memory Telemetry")
-        if st.session_state.detector:
-            det = st.session_state.detector
-            prob = det.last_probability
+        if camera_consent:
+            @st.fragment(run_every="1s")
+            def show_camera_telemetry():
+                with camera_data_lock:
+                    telemetry = camera_data["telemetry"]
+                    history = list(camera_data["history"])
 
-            st.metric("Fall Risk Probability", f"{prob * 100:.1f}%")
-            st.progress(float(min(max(prob, 0.0), 1.0)))
+                if telemetry is None:
+                    st.caption("Waiting for browser camera frames...")
+                    return
 
-            m1, m2 = st.columns(2)
-            m1.metric("Buffer Frames", f"{len(det.frame_buffer)} / 30")
-            m2.metric("Pose Found", "Yes" if det.last_pose_detected else "No")
+                probability = float(telemetry["fall_probability"])
+                st.metric("Fall Risk Probability", f"{probability * 100:.1f}%")
+                st.progress(min(max(probability, 0.0), 1.0))
 
-            if det.model_error:
-                st.warning(f"Model status: {det.model_error}")
+                metric_col1, metric_col2 = st.columns(2)
+                metric_col1.metric(
+                    "Buffer Frames",
+                    f"{telemetry['buffer_fill']} / {telemetry['buffer_target']}",
+                )
+                metric_col2.metric(
+                    "Pose Found",
+                    "Yes" if telemetry["pose_detected"] else "No",
+                )
 
-        st.subheader("Recent Prediction History")
-        if st.session_state.history_log:
-            history_df = pd.DataFrame(st.session_state.history_log[-10:][::-1])
-            st.dataframe(history_df, use_container_width=True, hide_index=True)
+                if telemetry["is_confirmed"]:
+                    st.error("Fall confirmed. Check the person immediately.")
+                elif telemetry["consecutive_fall_count"]:
+                    st.warning(
+                        "Potential fall: confirming "
+                        f"{telemetry['consecutive_fall_count']}/{confirm_frames}."
+                    )
+
+                st.subheader("Recent Prediction History")
+                if history:
+                    st.dataframe(
+                        pd.DataFrame(history[-10:][::-1]),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+
+            show_camera_telemetry()
         else:
-            st.caption("No live frames processed yet.")
+            st.caption("No live frames processed.")
 
 # ==========================================
 # TAB 2: DATASET INSPECTOR

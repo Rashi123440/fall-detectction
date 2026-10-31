@@ -6,11 +6,12 @@ A privacy-first computer vision and deep learning system that detects human fall
 
 ## 🌟 Key Highlights & Privacy Architecture
 
-* **In-Memory Video Processing:** Video frames from the webcam or camera stream are analyzed strictly in volatile RAM. No raw video files or captured camera pictures are ever saved to disk.
-* **100% Local Inference:** No video frames, coordinates, or audio streams are transmitted to external servers or cloud services.
+* **In-Memory App Processing:** The application processes incoming frames in memory and does not intentionally save raw camera frames to disk. Hosted deployments still receive frames over the network; see the privacy statement.
+* **Local mode:** Running the detector locally keeps camera processing on your own device.
+* **Hosted demo mode:** Browser camera frames are streamed to Streamlit Cloud for inference only after the viewer explicitly agrees. The app does not intentionally save raw frames, but this is not local-only processing.
 * **Privacy Stick Figure (Skeleton Mode):** Human motion is abstracted to 33 landmark coordinates $(x, y, z, \text{visibility})$. Visual identifiers such as faces, clothing, and private bedroom/bathroom environments are completely excluded.
 * **Soft Biometric Awareness:** Clearly documents that while skeleton models prevent visual identification, gait and kinetic movement patterns can still constitute soft biometrics.
-* **Local Sound Alert:** Sounds an immediate local alarm when a fall occurs to notify family or nearby caregivers without external surveillance feeds.
+* **Local Sound Alert:** The standalone local detector can sound an alarm on the device running it. The hosted dashboard's audio alert runs on the cloud host and may not be audible to the viewer.
 * **Interactive Dashboard:** Complete Streamlit interface with live webcam monitoring, dataset inspection, training, and diagnostic evaluation.
 
 ---
@@ -57,7 +58,7 @@ Privacy-Preserving-Fall-Detection/
 ## 📌 Phase 1 Status: Environment Setup & Dataset Inspection
 Phase 1 establishes the complete foundation without training a model yet:
 1. **Directory Structure:** Created modular layout separating raw datasets, in-memory processing code, documentation, and tests.
-2. **Dependencies:** Configured [`requirements.txt`](file:///c:/Users/1811r/OneDrive/Documents/Desktop/Privacy-Preserving-Fall-Detection/requirements.txt) with verified compatible packages on Python 3.13 (`mediapipe>=0.10.14,<0.11`, `tensorflow>=2.16.0`, `opencv-python>=4.8.0`).
+2. **Dependencies:** Configured [`requirements.txt`](file:///c:/Users/1811r/OneDrive/Documents/Desktop/Privacy-Preserving-Fall-Detection/requirements.txt) with computer vision, deep learning, Streamlit, and browser WebRTC dependencies.
 3. **Configuration:** Created [`src/config.py`](file:///c:/Users/1811r/OneDrive/Documents/Desktop/Privacy-Preserving-Fall-Detection/src/config.py) defining keypoint layout (33 landmarks x 4 coordinates + 3 kinematic features = 135-dim feature vector), temporal window sizes, and privacy policies.
 4. **Dataset Inspection:** Built [`src/dataset_loader.py`](file:///c:/Users/1811r/OneDrive/Documents/Desktop/Privacy-Preserving-Fall-Detection/src/dataset_loader.py) with automated directory health checking, benchmark parsing (UP-Fall and Le2i), and in-memory keypoint extraction.
 5. **Pre-Training Guarantee:** In strict adherence to scientific and engineering standards, no models are trained until the dataset is inspected and verified.
@@ -74,8 +75,8 @@ Phase 1 establishes the complete foundation without training a model yet:
 ### 2. Installation
 Clone this repository and install the dependencies:
 ```bash
-git clone https://github.com/your-username/Privacy-Preserving-Fall-Detection.git
-cd Privacy-Preserving-Fall-Detection
+git clone --branch privacy-preserving-fall-detection https://github.com/Rashi123440/fall-detectction.git
+cd fall-detectction
 pip install -r requirements.txt
 ```
 
@@ -90,6 +91,11 @@ streamlit run app/streamlit_app.py
 ```
 Open [http://localhost:8501](http://localhost:8501) in your browser.
 
+The browser camera uses WebRTC and works in a secure browser context. When running locally,
+video is sent to your local Streamlit process. On the hosted demo, video is sent to the cloud
+server after explicit consent. Skeleton-only mode changes the returned display, not the
+incoming camera stream.
+
 ### Option B: Standalone Real-Time Webcam Demo
 To run the high-performance OpenCV webcam monitor directly from terminal:
 ```bash
@@ -102,6 +108,9 @@ python -m src.real_time_detector --overlay
 * **Hotkeys in video window:**
   * Press `p` to toggle between **Privacy Skeleton Mode** and **Webcam Overlay**.
   * Press `q` or `ESC` to stop the camera and safely exit.
+
+The standalone detector processes the camera locally. The hosted web dashboard instead streams
+browser camera frames to the server; do not use it for sensitive spaces or safety-critical monitoring.
 
 ### Option C: Dataset Inspection & Health Check
 Verify your local data folders:
