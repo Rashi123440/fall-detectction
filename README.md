@@ -96,6 +96,21 @@ video is sent to your local Streamlit process. On the hosted demo, video is sent
 server after explicit consent. Skeleton-only mode changes the returned display, not the
 incoming camera stream.
 
+If WebRTC reports that connection is taking too long, the network may require a TURN relay.
+Create TURN credentials with a relay provider, then add them in the Streamlit app's **Manage app
+> Settings > Secrets** (do not commit these credentials):
+
+```toml
+[webrtc]
+turn_server_url = "turn:your-relay-host:3478,turns:your-relay-host:5349"
+turn_username = "your-provider-username"
+turn_credential = "your-provider-credential"
+```
+
+The app always attempts STUN and uses the configured TURN relay as an additional route. A relay
+service and valid credentials are required; changing app code alone cannot bypass a network that
+blocks direct WebRTC traffic.
+
 ### Option B: Standalone Real-Time Webcam Demo
 To run the high-performance OpenCV webcam monitor directly from terminal:
 ```bash

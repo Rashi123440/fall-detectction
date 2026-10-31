@@ -11,6 +11,7 @@ import av
 import numpy as np
 import pandas as pd
 import streamlit as st
+from streamlit.errors import StreamlitSecretNotFoundError
 from streamlit_webrtc import webrtc_streamer
 
 # Streamlit may put only the entrypoint directory on sys.path.
@@ -36,6 +37,7 @@ from src.preprocessor import KeypointPreprocessor
 from src.lstm_model import train_fall_detector, load_model_for_inference
 from src.evaluate import evaluate_model
 from src.real_time_detector import RealTimeFallDetector
+from src.webrtc_config import build_rtc_configuration
 
 # Page configuration
 st.set_page_config(
@@ -203,6 +205,26 @@ with tab_live:
             "Skeleton-only mode changes the returned display; it does not prevent sending camera frames to the server. "
             "Use Stop to end the stream. This demo is not a safety-monitoring service."
         )
+        try:
+            webrtc_settings = st.secrets["webrtc"]
+        except (StreamlitSecretNotFoundError, KeyError):
+            webrtc_settings = {}
+        rtc_configuration, turn_status = build_rtc_configuration(webrtc_settings)
+        if turn_status == "missing":
+            st.info(
+                "This app currently has STUN only. Some networks block direct WebRTC connections; "
+                "a TURN relay service and its credentials must be added to this app's secrets if "
+                "the connection warning persists."
+            )
+        elif turn_status == "incomplete":
+            st.warning(
+                "TURN relay settings are incomplete. Add the server URL, username, and credential "
+                "together in this app's secrets."
+            )
+        elif turn_status == "invalid":
+            st.error(
+                "The TURN server URL must start with `turn:` or `turns:`. Check this app's secrets."
+            )
 
         if camera_consent:
             if st.session_state.detector is None:
@@ -253,9 +275,7 @@ with tab_live:
                     },
                     "audio": False,
                 },
-                rtc_configuration={
-                    "iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]
-                },
+                rtc_configuration=rtc_configuration,
             )
             st.caption(
                 "Use the camera component's Start/Stop controls. The detector's audio alert runs on the cloud host "
