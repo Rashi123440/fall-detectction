@@ -4,8 +4,8 @@
 # ==============================================================================
 
 # Core Computer Vision & Landmark Extraction
-# opencv-python: In-memory video decoding and stick-figure canvas rendering
-opencv-python>=4.8.0
+# Headless OpenCV avoids GUI-library dependencies on Linux hosting platforms.
+opencv-python-headless>=4.8.0
 
 # mediapipe: Body pose landmark extraction (33 anatomical keypoints)
 # Pinned to <0.11 to maintain compatibility with Windows and standard landmark extraction models
