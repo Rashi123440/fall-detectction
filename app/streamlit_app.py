@@ -5,11 +5,17 @@ model training controls, and comprehensive evaluation metrics.
 
 import time
 import json
+import sys
 from pathlib import Path
 import numpy as np
 import pandas as pd
 import streamlit as st
 import cv2
+
+# Streamlit may put only the entrypoint directory on sys.path.
+project_root = Path(__file__).resolve().parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
 # Import project modules
 from src.config import (
